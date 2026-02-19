@@ -1,0 +1,4 @@
+--class-path src
+--resource test.td
+--main Main
+--run Main

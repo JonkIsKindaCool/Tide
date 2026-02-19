@@ -1,7 +1,5 @@
 # FLUX — Readable Syntax
 
-> The golden rule: **code reads like a technical English sentence**, no unnecessary symbols.
-
 ---
 
 ## Variables
@@ -22,11 +20,9 @@ let x, y, z = 1, 2, 3          -- multiple assignment
 Bool  Int  Float  Str  Char  Byte  Any  Null
 
 -- Compound
-[Int]                           -- list of integers
-{Str: Int}                      -- map of string to int
-(Int, Str)                      -- tuple
+List<Int>                         -- list of integers
+Map<String, Int>                      -- map of string to int
 Int?                            -- nullable
-Int | Str                       -- one or the other
 
 -- Named
 type Age = Int
@@ -71,9 +67,6 @@ let add    = |a, b| a + b
 fn divide(a: Int, b: Int) -> (quotient: Int, remainder: Int) {
     (a / b, a % b)
 }
-
--- Named arguments (more readable)
-greet(name: "Carlos", formal: true)
 ```
 
 ---
@@ -93,19 +86,12 @@ if temperature > 30 {
     do_nothing()
 }
 
--- When multiple cases (instead of switch)
-when color {
+-- Switch
+switch color {
     "red"   => stop()
     "green" => go()
     "blue"  => turn()
     else    => wait()
-}
-
--- Pattern matching
-match result {
-    Ok(value)      => show(value)
-    Error(message) => log(message)
-    Pending        => waiting()
 }
 ```
 
@@ -114,11 +100,6 @@ match result {
 ## Loops
 
 ```flux
--- Repeat N times
-repeat 10 {
-    print("hello")
-}
-
 -- While condition
 while playing {
     update()
@@ -136,14 +117,8 @@ for i, fruit in fruits {
 }
 
 -- Range
-for n in 1..=100 {
+for n in 1..100 {
     print(n)
-}
-
--- Loop with exit value
-let result = loop {
-    let x = calculate()
-    if x > 100 { break x }
 }
 ```
 
@@ -153,16 +128,20 @@ let result = loop {
 
 ```flux
 -- ? propagates the error upward
-fn read_config() -> Config | Error {
-    let text = read_file("config.json")?
-    let data = parse_json(text)?
+fn read_config() -> Config {
+    try {
+        let text = read_file("config.json")?
+        let data = parse_json(text)?    
+    } catch e -> Exception{
+        throw e
+    }
     data
 }
 
 -- Explicit handling
 try {
     connect(server)
-} catch Error(msg) {
+} catch e -> Any {
     log("Failed: " + msg)
 } finally {
     close_resources()
@@ -203,42 +182,6 @@ print(dog.speak())              -- "Woof"
 
 ---
 
-## Modules
-
-```flux
-module Math {
-    export let PI = 3.14159
-
-    export fn sqrt(x: Float) -> Float { ... }
-    export fn pow(base: Float, exp: Int) -> Float { ... }
-}
-
-import Math
-import Math.{ sqrt, PI }
-import Math as M
-```
-
----
-
-## Functional Style
-
-```flux
--- Pipeline: pass result to the next step
-let total = numbers
-    |> filter(|x| x > 0)
-    |> map(|x| x * 2)
-    |> reduce(0, |acc, x| acc + x)
-
--- Collection methods (self-explanatory)
-users
-    .filter(|u| u.active)
-    .sort(by: |u| u.name)
-    .take(10)
-    .map(|u| u.email)
-```
-
----
-
 ## Concurrency
 
 ```flux
@@ -246,17 +189,6 @@ users
 async fn fetch_user(id: Int) -> User {
     let response = await http.get("/users/" + id)
     await response.json()
-}
-
--- Run in parallel
-let (posts, friends) = await parallel {
-    fetch_posts(user),
-    fetch_friends(user)
-}
-
--- Background task
-spawn {
-    process_in_background()
 }
 ```
 
@@ -267,7 +199,6 @@ spawn {
 ```flux
 @inline
 @deprecated("Use new_function()")
-@derive(Debug, Eq, Hash)
 struct Point { x: Float, y: Float }
 ```
 
@@ -278,11 +209,6 @@ struct Point { x: Float, y: Float }
 ```flux
 -- Text
 "hello world"
-`hello, ${name}!`               -- interpolation
-"""
-    multiline
-    text here
-"""
 
 -- Numbers
 1_000_000                       -- visual separator
@@ -291,9 +217,7 @@ struct Point { x: Float, y: Float }
 
 -- Collections
 [1, 2, 3]                       -- list
-{1, 2, 3}                       -- set
 {"a": 1, "b": 2}                -- map
-(42, "hello", true)             -- tuple
 
 -- Ranges
 1..10                           -- 1 to 9
@@ -308,19 +232,11 @@ struct Point { x: Float, y: Float }
 ```flux
 -- Math          + - * / % **
 -- Comparison    == != < > <= >=
--- Logical       and  or  not
+-- Logical       && || !
 -- Null-safe     ??   ?.
--- Pipeline      |>
--- Range         ..   ..=
+-- Range         .. ..=
 -- Spread        ...list
+-- Bitwise       << >>
 ```
 
 ---
-
-## The 5 Principles of FLUX
-
-1. **Explicit over implicit** — if something happens, you can see it
-2. **Words over symbols** — `and`, `or`, `not` instead of `&&`, `||`, `!`
-3. **Immutable by default** — mutability is declared with `mut`
-4. **Errors as values** — no hidden surprises
-5. **One clear path** — for each problem, one obvious way to solve it
