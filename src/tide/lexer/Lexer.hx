@@ -9,6 +9,8 @@ class Lexer {
 	private var linePos:Int;
 	private var line:Int;
 
+	private var prevState:LexerState;
+
 	public function new(src:String) {
 		this.src = src;
 
@@ -24,6 +26,11 @@ class Lexer {
 		switch (peek()) {
 			case " ", "\r", "\t":
 				advance();
+				return next();
+			case "#":
+				while (peek() != "\n" && pos < src.length){
+					advance();
+				}
 				return next();
 			case "\n":
 				advance();
@@ -192,7 +199,7 @@ class Lexer {
 				advance();
 				var start:Int = linePos;
 				var str:String = "";
-				while (peek() != '"')
+				while (peek() != '"' && pos < src.length)
 					str += advance();
 
 				advance();
@@ -206,7 +213,7 @@ class Lexer {
 			var isFloat:Bool = false;
 			var isHex:Bool = false;
 
-			while (true) {
+			while (pos < src.length) {
 				if (!isHex && !isFloat && (peek() == "x")) {
 					num += advance();
 					isHex = true;
@@ -237,13 +244,31 @@ class Lexer {
 			var id:String = advance();
 			var start:Int = linePos;
 
-			while (isAlpha(peek()))
+			while (isAlpha(peek()) && pos < src.length)
 				id += advance();
 
 			return makeToken(start, linePos, line, TIdentifier(id));
 		}
 
 		throw new LexerError(linePos, line, src);
+	}
+
+	public function peekToken():Token {
+		saveState();
+		var tok:Token = next();
+		restore();
+
+		return tok;
+	}
+
+	public function maybe(data:TokenData):Bool {
+		saveState();
+		var tok:Token = next();
+		if (tok.data.equals(data))
+			return true;
+
+		restore();
+		return false;
 	}
 
 	private inline function makeToken(startPos:Int, endPos:Int, line:Int, data:TokenData):Token
@@ -271,68 +296,23 @@ class Lexer {
 	private inline function peek(?offset:Int = 0):String
 		return src.charAt(pos + offset);
 
-	public static function tokenToString(tok:Token, ?spaces:Int = 0):String {
-		var buf:StringBuf = new StringBuf();
-
-		function applySpaces(?plus:Int = 0):String {
-			var str:String = "";
-
-			for (i in 0...spaces + plus)
-				str += " ";
-
-			return str;
-		}
-
-		function add(str:String, ?plus:Int = 0) {
-			buf.add(applySpaces(plus) + str);
-		}
-
-		add("{\n");
-		add('Start Pos: ${tok.start}\n', 4);
-		add('End Pos: ${tok.end}\n', 4);
-		add('Line: ${tok.line}\n', 4);
-		add('Data: ${tokenDataToString(tok.data)}\n', 4);
-		add("}");
-
-		return buf.toString();
-	}
-
-	public static function tokenDataToString(tok:TokenData):String {
-		switch (tok) {
-			case TIdentifier(id):
-				return 'Identifier($id)';
-			case TInt(i):
-				return 'Integer($i)';
-			case TFloat(f):
-				return 'Float($f)';
-			case TString(s):
-				return 'String($s)';
-			case TOp(op):
-				return 'Operator($op)';
-			case TLeftParen:
-				return '(';
-			case TRightParen:
-				return ')';
-			case TLeftCurly:
-				return '{';
-			case TRightCurly:
-				return '}';
-			case TColon:
-				return ':';
-			case TDot:
-				return '.';
-			case TSemiColon:
-				return ';';
-			case TEof:
-				return '<eof>';
-			case TLeftSquare:
-				return '[';
-			case TRightSquare:
-				return ']';
-			case TQuestionMark:
-				return '?';
-			case TComma:
-				return ',';
+	private function saveState() {
+		this.prevState = {
+			line: line,
+			linePos: linePos,
+			pos: pos
 		}
 	}
+
+	private function restore() {
+		this.line = prevState.line;
+		this.linePos = prevState.linePos;
+		this.pos = prevState.pos;
+	}
+}
+
+private typedef LexerState = {
+	linePos:Int,
+	line:Int,
+	pos:Int
 }
