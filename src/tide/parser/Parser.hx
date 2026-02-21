@@ -1,5 +1,6 @@
 package tide.parser;
 
+import tide.parser.Expr.Type;
 import tide.parser.Expr.VariableDef;
 import tide.lexer.Token;
 import tide.parser.Expr.ExprData;
@@ -32,7 +33,10 @@ class Parser {
 			case TIdentifier("fn"):
 				lexer.next();
 				var name:String = expectIdentifier();
-				var type:String = "Any";
+				var type:Type = {
+					name: "Any",
+					generic: []
+				};
 				var args:Array<VariableDef> = [];
 				expect(TLeftParen);
 				while (true) {
@@ -40,10 +44,13 @@ class Parser {
 						break;
 
 					var name:String = expectIdentifier();
-					var type:String = "Any";
+					var type:Type = {
+						name: "Any",
+						generic: []
+					};
 
 					if (lexer.maybe(TColon)) {
-						type = expectIdentifier();
+						type = parseType();
 					}
 
 					args.push({name: name, type: type, mutable: true});
@@ -55,7 +62,7 @@ class Parser {
 				}
 
 				if (lexer.maybe(TOp("->"))) {
-					type = expectIdentifier();
+					type = parseType();
 				}
 
 				var body:Expr = parseBlock();
@@ -64,9 +71,12 @@ class Parser {
 			case TIdentifier("let"):
 				lexer.next();
 				var name:String = expectIdentifier();
-				var type:String = "Any";
+				var type:Type = {
+					name: "Any",
+					generic: []
+				};
 				if (lexer.maybe(TColon)) {
-					type = expectIdentifier();
+					type = parseType();
 				}
 
 				expect(TOp("="));
@@ -77,9 +87,12 @@ class Parser {
 				lexer.next();
 				var name:String = expectIdentifier();
 				var last:Token = lexer.peekToken();
-				var type:String = "Any";
+				var type:Type = {
+					name: "Any",
+					generic: []
+				};
 				if (lexer.maybe(TColon)) {
-					type = expectIdentifier();
+					type = parseType();
 				}
 				var expr:Expr = makeExprByToken(last, EId("null"));
 
@@ -94,7 +107,7 @@ class Parser {
 				var b:Expr = parseBlock();
 				var e:Expr = null;
 
-				switch (lexer.peekToken().data){
+				switch (lexer.peekToken().data) {
 					case TIdentifier("else"):
 						lexer.next();
 						e = parseBlock();
@@ -215,13 +228,27 @@ class Parser {
 		final tok:Token = lexer.next();
 		switch (tok.data) {
 			case TInt(i):
-				return makeExprByToken(tok, EInt(i));
+				return parsePost(makeExprByToken(tok, EInt(i)));
 			case TFloat(f):
-				return makeExprByToken(tok, EFloat(f));
+				return parsePost(makeExprByToken(tok, EFloat(f)));
 			case TString(s):
-				return makeExprByToken(tok, EString(s));
+				return parsePost(makeExprByToken(tok, EString(s)));
 			case TIdentifier(id):
 				return parsePost(makeExprByToken(tok, EId(id)));
+			case TLeftSquare:
+				var v:Array<Expr> = [];
+				while (true) {
+					if (lexer.maybe(TRightSquare))
+						break;
+
+					v.push(parseExpressions());
+
+					if (!lexer.maybe(TComma)) {
+						expect(TRightSquare);
+						break;
+					}
+				}
+				return parsePost(makeExpr(tok.start, tok.end, tok.line, tok.line, EArray(v)));
 			case TOp("|"):
 				var args:Array<VariableDef> = [];
 				while (true) {
@@ -229,10 +256,13 @@ class Parser {
 						break;
 
 					var name:String = expectIdentifier();
-					var type:String = "Any";
+					var type:Type = {
+						name: "Any",
+						generic: []
+					};
 
 					if (lexer.maybe(TColon)) {
-						type = expectIdentifier();
+						type = parseType();
 					}
 
 					args.push({name: name, type: type});
@@ -250,7 +280,35 @@ class Parser {
 	}
 
 	private function parsePost(e:Expr):Expr {
-		switch (lexer.peekToken()){
+		var start:Token = lexer.peekToken();
+		switch (start.data) {
+			case TLeftSquare:
+				lexer.next();
+				var i:Expr = parseExpressions();
+				var end:Token = expect(TRightSquare);
+
+				return parsePost(makeExpr(start.start, end.end, start.line, end.line, EAccess(e, i)));
+			case TDot:
+				lexer.next();
+				var next:Token = lexer.peekToken();
+				var f:String = expectIdentifier();
+				return parsePost(makeExpr(start.start, next.end, start.line, next.line, EField(e, f)));
+			case TLeftParen:
+				var end:Token = lexer.next();
+				var args:Array<Expr> = [];
+				while (true) {
+					if (lexer.maybe(TRightParen))
+						break;
+
+					args.push(parseExpressions());
+
+					if (!lexer.maybe(TComma)) {
+						expect(TRightParen);
+						break;
+					}
+				}
+
+				return parsePost(makeExpr(start.start, end.end, start.line, end.line, ECall(e, args)));
 			case _:
 				return e;
 		}
@@ -265,15 +323,42 @@ class Parser {
 				block.push(parseStatements());
 			}
 
-			return makeExpr(block[0]?.start ?? tok.start, block[block.length - 1]?.end ?? tok.end, block[0]?.startLine ?? tok.line, block[block.length - 1]?.endLine ?? tok.line, EBlock(block));
+			return makeExpr(block[0]?.start ?? tok.start, block[block.length - 1]?.end ?? tok.end, block[0]?.startLine ?? tok.line,
+				block[block.length - 1]?.endLine ?? tok.line, EBlock(block));
 		} else {
 			return parseStatements();
 		}
 	}
 
+	private function parseType():Type {
+		var t:Type = {
+			name: expectIdentifier(),
+			generic: []
+		}
+
+		if (lexer.maybe(TOp("<"))) {
+			while (true) {
+				if (lexer.maybe(TOp(">")))
+					break;
+
+				t.generic.push(parseType());
+
+				if (!lexer.maybe(TComma)) {
+					expect(TOp(">"));
+					break;
+				}
+			}
+		}
+
+		return t;
+	}
+
 	private function expect(t:TokenData) {
-		if (!lexer.maybe(t))
-			throw ParserError.expected(t, lexer.next(), lexer.src);
+		var tok:Token = lexer.next();
+		if (!tok.data.equals(t))
+			throw ParserError.expected(t, tok, lexer.src);
+
+		return tok;
 	}
 
 	private function expectIdentifier():String {

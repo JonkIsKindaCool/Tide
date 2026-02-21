@@ -1,5 +1,6 @@
 package tide.utils;
 
+import eval.luv.Dns.AddrInfoFlag;
 import tide.parser.Expr;
 import tide.lexer.Lexer;
 import tide.lexer.Token;
@@ -146,7 +147,6 @@ class Printer {
 				add('Mutable: $mutable\n', 8);
 				add('Value:\n', 8);
 				add(exprToString(e, spaces + 8), false);
-			case EMultVar(vars, values):
 			case EIf(cond, val, e):
 				add('If Statement:\n', 4);
 				add('Condition:\n', 8);
@@ -160,6 +160,34 @@ class Printer {
 			case EReturn(e):
 				add('Return:\n', 4);
 				add(exprToString(e, spaces + 8), false);
+
+			case EField(v, f):
+				add('Field:\n', 4);
+				add('Target:\n', 8);
+				add(exprToString(v, spaces + 8), false);
+				add('Field: $f\n', 8);
+			case EAccess(v, i):
+				add('Access:\n', 4);
+				add('Target:\n', 8);
+				add(exprToString(v, spaces + 8), false);
+				add('Index:\n', 8);
+				add(exprToString(i, spaces + 8), false);
+			case ECall(v, args):
+				add('Function Call:\n', 4);
+				add('Target:\n', 8);
+				add(exprToString(v, spaces + 8), false);
+				if (args.length > 0) {
+					add('Arguments:\n', 8);
+					for (a in args)
+						add(exprToString(a, spaces + 12), false);
+				}
+			case EArray(v):
+				add('Array:\n', 4);
+				if (v.length > 0) {
+					add('Values:\n', 8);
+					for (a in v)
+						add(exprToString(a, spaces + 12), false);
+				}
 		};
 		add("}\n");
 

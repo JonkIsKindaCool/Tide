@@ -8,7 +8,6 @@
 let name = "Ana"                # immutable, type inferred
 let age: Int = 25               # explicit type
 mut counter = 0                 # mutable
-let x, y, z = 1, 2, 3          # multiple assignment
 ```
 
 ---
@@ -157,14 +156,14 @@ let name = user?.name ?? "Anonymous"
 
 ```tide
 class Animal {
-    name       : Str
+    let name : Str
     mut energy : Int = 100
 
-    new(name: Str) {
+    public fn new(name: Str) {
         self.name = name
     }
 
-    fn eat(amount: Int) {
+    public fn eat(amount: Int) {
         self.energy += amount
     }
 
@@ -172,7 +171,7 @@ class Animal {
 }
 
 class Dog extends Animal {
-    fn speak() -> Str { "Woof" }
+    public fn speak() -> Str { "Woof" }
 }
 
 let dog = Dog(name: "Rex")
