@@ -1,3 +1,5 @@
+import tide.vm.VM;
+import tide.compiler.Program;
 import tide.compiler.Compiler;
 import tide.parser.Expr;
 import tide.parser.Parser;
@@ -12,5 +14,11 @@ function main() {
 
     var ast:Expr = parser.parse();
     var compiler:Compiler = new Compiler();
-    trace(compiler.compile(ast));
+    var p:Program = compiler.compile(resource);
+    trace(p);
+
+    var vm:VM = new VM();
+    vm.eval(p);
+
+    trace(vm.registers);
 }
