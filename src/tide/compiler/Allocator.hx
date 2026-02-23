@@ -18,30 +18,45 @@ class Allocator {
 
 	public function new(src:String) {
 		this.src = src;
+		variables = new Map();
 		registers = new Vector(MAX_REGISTERS, false);
 	}
 
-	public function allocateRegister(e:Expr):Int {
-		if (registers[curReg]) {
-			throw CompilerError.compilerError("Register " + curReg + " is already allocated.", e, src);
-		}
+	private var pinned:Array<Int> = [];
 
-		registers[curReg] = true;
-		return curReg++;
+	public function pin(reg:Int) {
+		pinned.push(reg);
+	}
+
+	public function unpin(reg:Int) {
+		pinned.remove(reg);
+	}
+
+	public function allocateRegister(e:Expr):Int {
+		var r:Int = 0;
+		while (registers[r] || pinned.contains(r))
+			r++;
+
+		trace("allocando registro:", r, "pinned:", pinned);
+
+		registers[r] = true;
+		curReg = r + 1;
+		return r;
 	}
 
 	public function freeRegister(e:Expr, ?reg:Int) {
 		var reg:Int = reg ?? --curReg;
 		if (!registers[reg])
-			throw CompilerError.compilerError("Register " + curReg + " is already free.", e, src);
+			throw CompilerError.compilerError("Register " + reg + " is already free.", e, src);
 
 		registers[reg] = false;
+		curReg = reg;
 	}
 
 	public function allocateVariable(e:Expr, reg:Int, v:String, mut:Bool):Int {
 		if (variables.exists(v)) {
 			var v = variables.get(v);
-			if (!v.mutable)
+			if (v.mutable)
 				return v.reg = reg;
 			else
 				throw CompilerError.compilerError('Variable $v is immutable.', e, src);
@@ -55,5 +70,9 @@ class Allocator {
 		variables.set(v, variable);
 
 		return variable.reg;
+	}
+
+	public function getVariable(n:String) {
+		return variables.get(n).reg;
 	}
 }

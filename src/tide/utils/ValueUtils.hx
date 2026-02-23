@@ -1,19 +1,27 @@
 package tide.utils;
 
-import tide.std.primitives.TideInt.TideIntInstance;
+import tide.std.primitives.TideString;
+import tide.std.primitives.TideFloat;
+import tide.std.TideValue;
+import tide.std.primitives.TideInt;
 import tide.vm.Values;
 import tide.std.TideInstance;
 
 class ValueUtils {
-    public static function valueToInstance(v:Values):TideInstance {
+    public static function valueToInstance(v:Values):TideValue {
         switch (v){
             case VInt(i):
-                return new TideIntInstance([v]);
+                return new TideInt(i);
+            case VFloat(f):
+                return new TideFloat(f);
+            case VString(s):
+                return new TideString(s);
             case VInstance(i):
                 return i;
             case _:
                 return null;
         }
+        return null;
     }
 
     public static function expectInt(v:Values):Int {

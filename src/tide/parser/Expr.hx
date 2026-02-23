@@ -4,6 +4,7 @@ enum ExprData {
 	EId(id:String);
 	EInt(i:Int);
 	EFloat(f:Float);
+	EBool(b:Bool);
 	EString(s:String);
 	EArray(v:Array<Expr>);
 	EBlock(b:Array<Expr>);

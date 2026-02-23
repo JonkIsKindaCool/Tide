@@ -228,11 +228,15 @@ class Parser {
 		final tok:Token = lexer.next();
 		switch (tok.data) {
 			case TInt(i):
-				return parsePost(makeExprByToken(tok, EInt(i)));
+				return (makeExprByToken(tok, EInt(i)));
 			case TFloat(f):
-				return parsePost(makeExprByToken(tok, EFloat(f)));
+				return (makeExprByToken(tok, EFloat(f)));
 			case TString(s):
 				return parsePost(makeExprByToken(tok, EString(s)));
+			case TIdentifier("true"):
+				return makeExprByToken(tok, EBool(true));
+			case TIdentifier("false"):
+				return makeExprByToken(tok, EBool(false));
 			case TIdentifier(id):
 				return parsePost(makeExprByToken(tok, EId(id)));
 			case TLeftSquare:

@@ -37,52 +37,103 @@ class Compiler {
 			case EBlock(exprs):
 				for (e in exprs)
 					compileExpr(e, instructions);
+			case EBool(b):
+				instructions.push(b ? TRUE : FALSE);
+				instructions.push(reg = allocator.allocateRegister(e));
+				shouldFree = true;
+			case EReturn(e):
+				var i = compileExpr(e, instructions);
+				instructions.push(RETURN);
+				instructions.push(i.reg);
+				if (i.shouldFree)
+					allocator.freeRegister(e, i.reg);
 			case EId(id):
+				instructions.push(LOAD_ID);
+				instructions.push(reg = allocator.getVariable(id));
 			case EInt(i):
 				instructions.push(LOAD_K);
 				instructions.push(reg = allocator.allocateRegister(e));
 				instructions.push(addConstant(VInt(i)));
+				shouldFree = true;
 			case EFloat(f):
 				instructions.push(LOAD_K);
 				instructions.push(reg = allocator.allocateRegister(e));
 				instructions.push(addConstant(VFloat(f)));
+				shouldFree = true;
 			case EString(s):
 				instructions.push(LOAD_K);
 				instructions.push(reg = allocator.allocateRegister(e));
 				instructions.push(addConstant(VString(s)));
+				shouldFree = true;
+			// En Compiler.hx, dentro de EBinop
 			case EBinop(l, r, op):
 				var lReg = compileExpr(l, instructions);
-				var rReg = compileExpr(r, instructions);
+				trace("lReg asignado:", lReg.reg);
 
-				var l:Int = lReg.reg;
-				var r:Int = rReg.reg;
+				allocator.pin(lReg.reg);
+				var rReg = compileExpr(r, instructions);
+				allocator.unpin(lReg.reg);
+				trace("rReg asignado:", rReg.reg); // si sigue siendo 0, el pin no está funcionando
+
+				var lIdx:Int = lReg.reg;
+				var rIdx:Int = rReg.reg;
+
 				instructions.push(switch (op) {
-					case "+":
-						SUM;
-					case "-":
-						SUBTRACT;
-					case "*":
-						MULTIPLY;
-					case "/":
-						DIVIDE;
-					case _:
-						throw CompilerError.compilerError('Unexpected operator $op.', e, src);
+					case "+": SUM;
+					case "-": SUBTRACT;
+					case "*": MULTIPLY;
+					case "/": DIVIDE;
+					case "%": MOD;
+					case "**": POW;
+					case "==": EQ;
+					case "!=": NEQ;
+					case "<": LT;
+					case ">": GT;
+					case "<=": LTE;
+					case ">=": GTE;
+					case "&&": AND;
+					case "||": OR;
+					case "??": NULLISH;
+					case "..": RANGE;
+					case "..=": RANGE_INC;
+					case "<<": SHL;
+					case ">>": SHR;
+					case _: throw CompilerError.compilerError('Unexpected operator $op.', e, src);
 				});
-				instructions.push(l);
-				instructions.push(r);
-				if (lReg.shouldFree)
-					allocator.freeRegister(e, lReg.reg);
+				instructions.push(lIdx);
+				instructions.push(rIdx);
 
 				if (rReg.shouldFree)
 					allocator.freeRegister(e, rReg.reg);
+				if (lReg.shouldFree)
+					allocator.freeRegister(e, lReg.reg);
+
 				instructions.push(reg = allocator.allocateRegister(e));
-			case EUnop(op, e, post):
+				shouldFree = true;
+
+			case EUnop(op, inner, post):
+				var iReg = compileExpr(inner, instructions);
+
+				switch (op) {
+					case "!":
+						instructions.push(NOT);
+						instructions.push(iReg.reg);
+						if (iReg.shouldFree)
+							allocator.freeRegister(e, iReg.reg);
+						instructions.push(reg = allocator.allocateRegister(e));
+						shouldFree = true;
+					case "...":
+						throw CompilerError.compilerError('Spread not yet implemented.', e, src);
+					case _:
+						throw CompilerError.compilerError('Unexpected unary operator $op.', e, src);
+				}
 			case EVar(name, type, e, mutable):
+				var i = compileExpr(e, instructions);
+				allocator.allocateVariable(e, reg = i.reg, name, mutable);
 			case EArray(v):
 			case EFunction(e, args, type, name):
 			case ELambda(e, args):
 			case EIf(cond, b, e):
-			case EReturn(e):
 			case ECall(v, args):
 			case EAccess(v, i):
 			case EField(v, f):

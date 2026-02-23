@@ -104,6 +104,8 @@ class Printer {
 				add('Identifier: $id\n', 4);
 			case EInt(i):
 				add('Integer: $i\n', 4);
+			case EBool(i):
+				add('Bool: $i\n', 4);
 			case EFloat(f):
 				add('Float: $f\n', 4);
 			case EString(s):

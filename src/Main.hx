@@ -18,7 +18,7 @@ function main() {
     trace(p);
 
     var vm:VM = new VM();
-    vm.eval(p);
+    trace(vm.eval(p));
 
-    trace(vm.registers);
+    trace(vm.registers.toArray().filter(i -> i != null));
 }

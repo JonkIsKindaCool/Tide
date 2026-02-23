@@ -1,1 +1,4 @@
-1 + 1
+mut aea = "eae"
+let test = aea + "xdd"
+
+return test
